@@ -8,17 +8,19 @@ import numpy as np
 
 
 class HierarchyGCN(nn.Module):
-    def __init__(self,
-                 num_nodes,
-                 in_matrix,
-                 out_matrix,
-                 in_dim,
-                 dropout=0.0,
-                 device=torch.device('cpu'),
-                 root=None,
-                 hierarchical_label_dict=None,
-                 label_trees=None,
-                 dataset=None):
+    def __init__(
+        self,
+        num_nodes,
+        in_matrix,
+        out_matrix,
+        in_dim,
+        dropout=0.0,
+        device=torch.device("cpu"),
+        root=None,
+        hierarchical_label_dict=None,
+        label_trees=None,
+        dataset=None,
+    ):
         """
         Graph Convolutional Network variant for hierarchy structure
         original GCN paper:
@@ -36,27 +38,34 @@ class HierarchyGCN(nn.Module):
         """
         super(HierarchyGCN, self).__init__()
         self.model = nn.ModuleList()
-        self.model.append(
-            HierarchyGCNModule(num_nodes,
-                               in_matrix, out_matrix,
-                               in_dim,
-                               dropout,
-                               device, dataset))
+        self.model.append(HierarchyGCNModule(num_nodes, in_matrix, out_matrix, in_dim, dropout, device, dataset))
 
     def forward(self, label):
         return self.model[0](label)
 
 
 class HierarchyGCNModule(nn.Module):
-    def __init__(self,
-                 num_nodes,
-                 in_adj, out_adj,
-                 in_dim, dropout, device, in_arc=True, out_arc=True,
-                 self_loop=True, dataset=None):
+    """层次的图卷积网络"""
+
+    def __init__(
+        self,
+        num_nodes,
+        in_adj,
+        out_adj,
+        in_dim,
+        dropout,
+        device,
+        in_arc=True,
+        out_arc=True,
+        self_loop=True,
+        dataset=None,
+    ):
         """
         module of Hierarchy-GCN
         :param num_nodes: int, N
+        in_adj 是输入的邻接矩阵, 从 child => parent
         :param in_adj: numpy.Array(N, N), input adjacent matrix for child2parent (bottom-up manner)
+        out_adj 是输出的邻接矩阵, 从 parent => child
         :param out_adj: numpy.Array(N, N), output adjacent matrix for parent2child (top-down manner)
         :param in_dim: int, the dimension of each node <- config.structure_encoder.node.dimension
         :param dropout: Float, P value for dropout module <- configure.structure_encoder.node.dropout
@@ -76,17 +85,23 @@ class HierarchyGCNModule(nn.Module):
         assert in_arc or out_arc
         #  bottom-up child sum
         in_prob = in_adj
+        # shape (N, N), N 是标签数
         self.adj_matrix = Parameter(torch.Tensor(in_prob))
+        # shape (N, in_dim)
         self.edge_bias = Parameter(torch.Tensor(num_nodes, in_dim))
+        # shape (in_dim, 1)
         self.gate_weight = Parameter(torch.Tensor(in_dim, 1))
+        # shape (N, 1)
         self.bias_gate = Parameter(torch.Tensor(num_nodes, 1))
         self.activation = nn.ReLU()
+        # 就相当于小于等于 0 的不变, 大于 0 的变成 1
         self.origin_adj = torch.Tensor(np.where(in_adj <= 0, in_adj, 1.0)).to(device)
         # top-down: parent to child
         self.out_adj_matrix = Parameter(torch.Tensor(out_adj))
         self.out_edge_bias = Parameter(torch.Tensor(num_nodes, in_dim))
         self.out_gate_weight = Parameter(torch.Tensor(in_dim, 1))
         self.out_bias_gate = Parameter(torch.Tensor(num_nodes, 1))
+        # shape (in_dim, 1)
         self.loop_gate = Parameter(torch.Tensor(in_dim, 1))
         self.dropout = nn.Dropout(p=dropout)
         self.reset_parameters()
@@ -95,19 +110,23 @@ class HierarchyGCNModule(nn.Module):
         """
         initialize parameters
         """
+        # weight 使用 xavier 初始化
         for param in [self.gate_weight, self.loop_gate, self.out_gate_weight]:
             nn.init.xavier_uniform_(param)
+        # bias 设置为 0
         for param in [self.edge_bias, self.out_edge_bias, self.bias_gate]:
             nn.init.zeros_(param)
 
     def forward(self, inputs):
         """
+        最关键的就是这个前向传播了
         :param inputs: torch.FloatTensor, (batch_size, N, in_dim)
         :return: message_ -> torch.FloatTensor (batch_size, N, in_dim)
         """
         h_ = inputs  # batch, N, in_dim
         message_ = torch.zeros_like(h_).to(self.device)  # batch, N, in_dim
 
+        # 先按元素相乘 (N, N), 然后再做矩阵乘法
         h_in_ = torch.matmul(self.origin_adj * self.adj_matrix, h_)  # batch, N, in_dim
         in_ = h_in_ + self.edge_bias
         in_ = in_
@@ -119,7 +138,7 @@ class HierarchyGCNModule(nn.Module):
         in_ = self.dropout(in_)
         message_ += in_  # batch, N, in_dim
 
-        
+        # 这流程和前面一样的
         h_output_ = torch.matmul(self.origin_adj.transpose(0, 1) * self.out_adj_matrix, h_)
         out_ = h_output_ + self.out_edge_bias
         out_gate_ = torch.matmul(h_, self.out_gate_weight)
@@ -127,10 +146,12 @@ class HierarchyGCNModule(nn.Module):
         out_ = out_ * F.sigmoid(out_gate_)
         out_ = self.dropout(out_)
         message_ += out_
-        
+
+        # shape (batch_size, N, 1)
         loop_gate = torch.matmul(h_, self.loop_gate)
         loop_ = h_ * F.sigmoid(loop_gate)
         loop_ = self.dropout(loop_)
         message_ += loop_
 
+        # 感觉看完了, 却不理解它的意思
         return self.activation(message_)

@@ -6,12 +6,14 @@ from models.structure_model.structure_encoder import StructureEncoder
 from models.text_encoder import TextEncoder
 from models.embedding_layer import EmbeddingLayer
 from models.text_feature_propagation import HiMatchTP
+from helper.configure import Configure
+from data_modules.vocab import Vocab
 
-from transformers.modeling_bert import BertPreTrainedModel, BertModel
+from transformers import BertModel
 
 
 class HiMatch(nn.Module):
-    def __init__(self, config, vocab, model_mode="TRAIN"):
+    def __init__(self, config: Configure, vocab: Vocab, model_mode="TRAIN"):
         """
         Hierarchy-Aware Global Model class
         :param config: helper.configure, Configure Object
@@ -24,12 +26,13 @@ class HiMatch(nn.Module):
         super(HiMatch, self).__init__()
         self.config = config
         self.vocab = vocab
-        self.device = config.train.device_setting.device
-        self.dataset = config.data.dataset
+        self.device: str = config.train.device_setting.device
+        self.dataset: str = config.data.dataset  # wos
 
         self.token_map, self.label_map = vocab.v2i["token"], vocab.v2i["label"]
-        self.model_type = config.model.type
+        self.model_type: str = config.model.type  # HiMatch-bert
 
+        # 使用 bert 的话, 就初始化一个 BertModel. 不然用 EmbeddingLayer
         if "bert" in self.model_type:
             self.bert = BertModel.from_pretrained("bert-base-cased")
             self.bert_dropout = nn.Dropout(0.1)
@@ -57,7 +60,7 @@ class HiMatch(nn.Module):
             label_map=vocab.v2i["label"],
             device=self.device,
             graph_model_type=config.structure_encoder.type,
-            gcn_in_dim=config.embedding.label.dimension,
+            gcn_in_dim=config.embedding.label.dimension,  # 768
         )
 
         self.himatch = HiMatchTP(
