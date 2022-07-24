@@ -74,20 +74,25 @@ class HiMatchTP(nn.Module):
         else:
             text_feature, mode = inputs[0], inputs[1]
 
+        # (batch_size, kernel_size, text_dim) => (batch_size, kernel_size * text_dim)
         text_feature = text_feature.view(text_feature.shape[0], -1)
         # original_text_feature = text_feature
 
         text_feature = self.transformation_dropout(self.transformation(text_feature))
+        # (batch_size, N, 300)
         text_feature = text_feature.view(
             text_feature.shape[0], len(self.label_map), self.config.model.linear_transformation.node_dimension
         )
 
+        # 经过图模型, 返回的 shape 没变, 还是 (batch_size, N, 300)
         label_wise_text_feature = self.graph_model(text_feature)
 
+        # 线性层, shape (N * 300, N) => (batch_size, N)
         logits = self.linear(label_wise_text_feature.view(label_wise_text_feature.shape[0], -1))
         if self.config.model.classifier.output_drop:
             logits = self.dropout(logits)
 
+        # 训练还要多一步, 经过 matching_model
         if inputs[1] == "TRAIN":
             text_repre, label_repre_positive, label_repre_negative = self.matching_model(
                 label_wise_text_feature.view(label_wise_text_feature.shape[0], -1),

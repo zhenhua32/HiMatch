@@ -119,7 +119,7 @@ class HierarchyGCNModule(nn.Module):
 
     def forward(self, inputs):
         """
-        最关键的就是这个前向传播了
+        最关键的就是这个前向传播了, 输入和输出的 shape 相同
         :param inputs: torch.FloatTensor, (batch_size, N, in_dim)
         :return: message_ -> torch.FloatTensor (batch_size, N, in_dim)
         """
