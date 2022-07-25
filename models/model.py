@@ -74,6 +74,7 @@ class HiMatch(nn.Module):
 
     def optimize_params_dict(self):
         """
+        获取整个模型的需要优化的参数
         get parameters of the overall model
         :return: List[Dict{'params': Iteration[torch.Tensor],
                            'lr': Float (predefined learning rate for specified module,
@@ -81,6 +82,7 @@ class HiMatch(nn.Module):
                           }]
         """
         params = list()
+        # 使用 bert 的话, 就没有这些
         if "bert" not in self.model_type:
             params.append({"params": self.text_encoder.parameters()})
             params.append({"params": self.token_embedding.parameters()})
@@ -94,6 +96,7 @@ class HiMatch(nn.Module):
         :return:
         """
         if inputs[1] == "TRAIN":
+            # 训练部分会多一个输入 label_representation, 表示标签的信息
             batch, mode, label_repre = inputs
             if "bert" in self.model_type:
                 outputs = self.bert(
@@ -115,6 +118,7 @@ class HiMatch(nn.Module):
             return logits, text_repre, label_repre_positive, label_repre_negative
 
         else:
+            # 预测部分
             batch, mode = inputs[0], inputs[1]
 
             if "bert" in self.model_type:
@@ -124,6 +128,7 @@ class HiMatch(nn.Module):
                     batch["input_mask"].to(self.config.train.device_setting.device),
                 )
                 pooled_output = outputs[1]
+                # 池化层输出
                 token_output = self.bert_dropout(pooled_output)
             else:
                 embedding = self.token_embedding(batch["token"].to(self.config.train.device_setting.device))

@@ -3,27 +3,34 @@ import math
 import torch
 import numpy as np
 import os
+
+from helper.configure import Configure
 from models.structure_model.structure_encoder import StructureEncoder
 
 
 class MatchingNet(nn.Module):
-    def __init__(self, config, graph_model_label=None, label_map=None):
+    """匹配网络"""
+
+    def __init__(self, config: Configure, graph_model_label: StructureEncoder=None, label_map: dict=None):
         super(MatchingNet, self).__init__()
         self.config = config
-        self.dataset = config.data.dataset
+        self.dataset = config.data.dataset  # wos
         self.label_map = label_map
-        self.positive_sample_num = config.data.positive_num
-        self.negative_sample_num = config.data.negative_ratio * self.positive_sample_num
-        self.dimension = config.matching_net.dimension
-        self.dropout_ratio = config.matching_net.dropout
+        self.positive_sample_num = config.data.positive_num  # 1
+        self.negative_sample_num = config.data.negative_ratio * self.positive_sample_num  # 3 * 1
+        self.dimension = config.matching_net.dimension  # 200
+        self.dropout_ratio = config.matching_net.dropout  # 0.1
 
         self.embedding_net1 = nn.Sequential(
+            # 从 N * 300 => 200
             nn.Linear(len(self.label_map) * config.model.linear_transformation.node_dimension, self.dimension),
             nn.ReLU(),
             nn.Dropout(self.dropout_ratio),
+            # 从 200 => 200
             nn.Linear(self.dimension, self.dimension),
         )
         self.label_encoder = nn.Sequential(
+            # 从 768 => 200
             nn.Linear(config.embedding.label.dimension, self.dimension),
             nn.ReLU(),
             nn.Dropout(self.dropout_ratio),

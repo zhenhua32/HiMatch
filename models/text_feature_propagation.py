@@ -13,6 +13,7 @@ from models.structure_model.structure_encoder import StructureEncoder
 
 
 class HiMatchTP(nn.Module):
+    """text_feature_propagation 文本特征传播"""
     def __init__(
         self,
         config: Configure,
@@ -70,6 +71,7 @@ class HiMatchTP(nn.Module):
         :return: label_repre ->  torch.FloatTensor, (batch, label_size, label_feature_dim)
         """
         if inputs[1] == "TRAIN":
+            # 文本特征, 模式, 正例的mask, 负例的mask, label 特征
             text_feature, mode, ranking_positive_mask, ranking_negative_mask, label_repre = inputs
         else:
             text_feature, mode = inputs[0], inputs[1]
