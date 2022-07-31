@@ -241,4 +241,5 @@ def get_label_embedding(label_dict, input_file, output_file):
             f.write("\n")
 
 
-get_label_embedding("./vocab_wos/label.dict", "./data/wos_train.json", "./data/wos_label_desc.json")
+if __name__ == "__main__":
+    get_label_embedding("./vocab_wos/label.dict", "./data/wos/wos_train.json", "./data/wos/wos_label_desc.json")

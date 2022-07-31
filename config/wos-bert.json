@@ -1,7 +1,7 @@
 {
   "data": {
     "dataset": "wos",
-    "data_dir": "./data",
+    "data_dir": "./data/wos",
     "train_file": "wos_train.json",
     "val_file": "wos_val.json",
     "test_file": "wos_test.json",

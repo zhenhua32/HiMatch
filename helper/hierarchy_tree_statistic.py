@@ -78,9 +78,10 @@ class DatasetStatistic(object):
 
     def get_taxonomy_file(self):
         """
-
+        原来 wos.taxnomy 是通过这个函数生成的.
         :return:
         """
+        # 这个好坑, 那就是处理过原始文件了, 然后重新写入了
         file = open(os.path.join(self.config.data.data_dir, self.config.data.hierarchy), "r")
         data = file.readlines()
         file.close()
@@ -94,15 +95,21 @@ class DatasetStatistic(object):
             else:
                 hierarcy_dict[p].append(c)
         print(hierarcy_dict)
+
+        # 这个操作有点意思, 就是循环把父级和对应的子类写入进去
         known_label = ["Root"]
         output_lines = []
         while len(known_label):
+            # 写入当前的父级和子类
             output_lines.append([known_label[0]] + hierarcy_dict[known_label[0]])
+            # 然后不断扩展 known_label, 将有子类的子类添加进去
             for i in hierarcy_dict[known_label[0]]:
                 if i in hierarcy_dict.keys():
                     known_label.append(i)
+            # 因为消耗了当前的第一个父类, 所以要删除
             known_label = known_label[1:]
         print(output_lines)
+        # 重新写入, 覆盖掉原始文件
         file = open(os.path.join(self.config.data.data_dir, self.config.data.hierarchy), "w")
         for i in output_lines:
             file.write("\t".join(i) + "\n")
@@ -110,6 +117,10 @@ class DatasetStatistic(object):
 
     @staticmethod
     def get_hierar_relations_with_name(taxo_file_dir):
+        """
+        读取 wos.taxnomy, 每行是用 \t 分割的, 第一个是父类, 后面的都是子类
+        返回一个字典, key 是 parent, value 是 children. 还有一个 label_vocab
+        """
         parent_child_dict = dict()
         label_vocab = []
         f = open(taxo_file_dir, "r")
