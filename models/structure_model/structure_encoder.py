@@ -33,10 +33,8 @@ class StructureEncoder(nn.Module):
         )
         # 用的是 wos_prob.json 文件
         hierarchy_prob_file = os.path.join(config.data.data_dir, config.data.prob_json)
-        f = open(hierarchy_prob_file, "r")
-        hierarchy_prob_str = f.readlines()
-        f.close()
-        self.hierarchy_prob = json.loads(hierarchy_prob_str[0])
+        with open(hierarchy_prob_file, "r", encoding="utf-8") as f:
+            self.hierarchy_prob = json.load(f)
 
         self.node_prob_from_parent = np.zeros((len(self.label_map), len(self.label_map)))
         self.node_prob_from_child = np.zeros((len(self.label_map), len(self.label_map)))
